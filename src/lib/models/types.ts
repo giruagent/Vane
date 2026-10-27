@@ -47,6 +47,8 @@ type ToolCall = {
   id: string;
   name: string;
   arguments: Record<string, any>;
+  // Preserve provider metadata, including Gemini thought signatures, verbatim.
+  extra_content?: Record<string, unknown>;
 };
 
 type GenerateTextInput = {

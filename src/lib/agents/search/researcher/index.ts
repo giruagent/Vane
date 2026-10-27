@@ -140,6 +140,9 @@ class Researcher {
 
             if (existingIndex !== -1) {
               finalToolCalls[existingIndex].arguments = tc.arguments;
+              if (tc.extra_content) {
+                finalToolCalls[existingIndex].extra_content = tc.extra_content;
+              }
             } else {
               finalToolCalls.push(tc);
             }

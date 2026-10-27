@@ -223,6 +223,13 @@ export const POST = async (req: Request) => {
         fileIds: body.files,
         systemInstructions: body.systemInstructions || 'None',
       },
+    }).catch((err: unknown) => {
+      console.error('Search failed:', err);
+      const status = (err as { status?: unknown } | null)?.status;
+      const detail = typeof status === 'number' ? ` (HTTP ${status})` : '';
+      session.emit('error', {
+        data: `Search failed${detail}. Please try again or select another model.`,
+      });
     });
 
     ensureChatExists({

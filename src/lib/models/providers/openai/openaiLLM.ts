@@ -56,6 +56,7 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
               tool_calls: msg.tool_calls?.map((tc) => ({
                 id: tc.id,
                 type: 'function',
+                ...(tc.extra_content && { extra_content: tc.extra_content }),
                 function: {
                   name: tc.name,
                   arguments: JSON.stringify(tc.arguments),
@@ -111,6 +112,9 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
                   name: tc.function.name,
                   id: tc.id,
                   arguments: JSON.parse(tc.function.arguments),
+                  ...((tc as typeof tc & Pick<ToolCall, 'extra_content'>).extra_content && {
+                    extra_content: (tc as typeof tc & Pick<ToolCall, 'extra_content'>).extra_content,
+                  }),
                 };
               }
             })
@@ -158,8 +162,7 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
       stream: true,
     });
 
-    let recievedToolCalls: { name: string; id: string; arguments: string }[] =
-      [];
+    const recievedToolCalls: (Omit<ToolCall, 'arguments'> & { arguments: string })[] = [];
 
     for await (const chunk of stream) {
       if (chunk.choices && chunk.choices.length > 0) {
@@ -168,22 +171,18 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
           contentChunk: chunk.choices[0].delta.content || '',
           toolCallChunk:
             toolCalls?.map((tc) => {
-              if (!recievedToolCalls[tc.index]) {
-                const call = {
-                  name: tc.function?.name!,
-                  id: tc.id!,
-                  arguments: tc.function?.arguments || '',
-                };
-                recievedToolCalls.push(call);
-                return { ...call, arguments: parse(call.arguments || '{}') };
-              } else {
-                const existingCall = recievedToolCalls[tc.index];
-                existingCall.arguments += tc.function?.arguments || '';
-                return {
-                  ...existingCall,
-                  arguments: parse(existingCall.arguments),
-                };
-              }
+              const call = (recievedToolCalls[tc.index] ??= {
+                name: '',
+                id: '',
+                arguments: '',
+              });
+              if (tc.function?.name) call.name = tc.function.name;
+              if (tc.id) call.id = tc.id;
+              call.arguments += tc.function?.arguments || '';
+              // Gemini may send the signature in a later streaming chunk.
+              const extraContent = (tc as typeof tc & Pick<ToolCall, 'extra_content'>).extra_content;
+              if (extraContent) call.extra_content = extraContent;
+              return { ...call, arguments: parse(call.arguments || '{}') };
             }) || [],
           done: chunk.choices[0].finish_reason !== null,
           additionalInfo: {
