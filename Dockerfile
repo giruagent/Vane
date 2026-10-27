@@ -29,13 +29,17 @@ WORKDIR /home/vane
 COPY --from=builder /home/vane/public ./public
 COPY --from=builder /home/vane/.next/static ./public/_next/static
 COPY --from=builder /home/vane/.next/standalone ./
+COPY --from=builder /home/vane/.next/server ./.next/server
+# Keep the browser installer on the same locked version used by the build.
+COPY --from=builder /home/vane/node_modules/playwright ./node_modules/playwright
+COPY --from=builder /home/vane/node_modules/playwright-core ./node_modules/playwright-core
 COPY --from=builder /home/vane/data ./data
 COPY drizzle ./drizzle
 
 RUN mkdir /home/vane/uploads
 
-RUN yarn add playwright
-RUN yarn playwright install --with-deps --only-shell chromium
+# Do not install dependencies here: that can upgrade Next.js after the build.
+RUN node node_modules/playwright/cli.js install --with-deps --only-shell chromium
 
 RUN useradd --shell /bin/bash --system \
     --home-dir "/usr/local/searxng" \

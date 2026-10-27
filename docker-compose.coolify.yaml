@@ -1,0 +1,13 @@
+services:
+  vane:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "3000"
+    volumes:
+      - vane-data:/home/vane/data
+
+volumes:
+  vane-data:
